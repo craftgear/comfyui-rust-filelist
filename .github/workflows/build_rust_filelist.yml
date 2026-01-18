@@ -1,4 +1,4 @@
-name: Build rust-filelist binaries
+name: Build comfyui-fast-filelist binaries
 on:
   workflow_dispatch:
   push:
@@ -18,10 +18,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os:
-          - ubuntu-latest
-          - windows-latest
-          - macos-14
+        include:
+          - os: ubuntu-latest
+            os_key: linux
+          - os: windows-latest
+            os_key: windows
+          - os: macos-14
+            os_key: macos
     steps:
       - name: Check out code
         uses: actions/checkout@v4
@@ -41,6 +44,8 @@ jobs:
           --out dist
       - name: Extract extension
         shell: python
+        env:
+          OS_KEY: ${{ matrix.os_key }}
         run: |
           import glob
           import os
@@ -48,6 +53,9 @@ jobs:
           import zipfile
 
           dist_dir = "dist"
+          os_key = os.environ.get("OS_KEY")
+          if not os_key:
+            raise SystemExit("Missing OS_KEY")
           wheels = glob.glob(os.path.join(dist_dir, "*.whl"))
           if not wheels:
             raise SystemExit("No wheel files found")
@@ -56,7 +64,7 @@ jobs:
           with zipfile.ZipFile(wheel_path) as zf:
             candidates = [
               name for name in zf.namelist()
-              if name.startswith("comfyui_rust_filelist")
+              if name.startswith("comfyui_fast_filelist")
               and (
                 name.endswith(".so")
                 or name.endswith(".pyd")
@@ -65,16 +73,17 @@ jobs:
             ]
             if not candidates:
               raise SystemExit("No extension file found in wheel")
-            os.makedirs("bin", exist_ok=True)
+            target_dir = os.path.join("bin", os_key)
+            os.makedirs(target_dir, exist_ok=True)
             for name in candidates:
-              dest = os.path.join("bin", os.path.basename(name))
+              dest = os.path.join(target_dir, os.path.basename(name))
               with zf.open(name) as src, open(dest, "wb") as dst:
                 shutil.copyfileobj(src, dst)
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: rust-filelist-${{ matrix.os }}
-          path: bin/comfyui_rust_filelist*
+          name: rust-filelist-${{ matrix.os_key }}
+          path: bin/${{ matrix.os_key }}/comfyui_fast_filelist*
 
   commit:
     if: github.actor != 'github-actions[bot]'
@@ -99,24 +108,39 @@ jobs:
           import shutil
 
           target_dir = "bin"
-          os.makedirs(target_dir, exist_ok=True)
+          platform_dirs = ("linux", "macos", "windows")
+          for platform in platform_dirs:
+            os.makedirs(os.path.join(target_dir, platform), exist_ok=True)
 
           for pattern in (
-            "comfyui_rust_filelist*.so",
-            "comfyui_rust_filelist*.pyd",
-            "comfyui_rust_filelist*.dylib",
+            "comfyui_fast_filelist*.so",
+            "comfyui_fast_filelist*.pyd",
+            "comfyui_fast_filelist*.dylib",
           ):
             for path in glob.glob(os.path.join(target_dir, pattern)):
               os.remove(path)
+            for platform in platform_dirs:
+              for path in glob.glob(os.path.join(target_dir, platform, pattern)):
+                os.remove(path)
 
-          for path in glob.glob("artifacts/**/comfyui_rust_filelist*", recursive=True):
-            dest = os.path.join(target_dir, os.path.basename(path))
+          for path in glob.glob("artifacts/**/comfyui_fast_filelist*", recursive=True):
+            rel_path = os.path.relpath(path, "artifacts")
+            artifact_name = rel_path.split(os.sep, 1)[0]
+            platform_map = {
+              "rust-filelist-linux": "linux",
+              "rust-filelist-macos": "macos",
+              "rust-filelist-windows": "windows",
+            }
+            platform = platform_map.get(artifact_name)
+            if not platform:
+              raise SystemExit(f"Unknown artifact name: {artifact_name}")
+            dest = os.path.join(target_dir, platform, os.path.basename(path))
             shutil.copy2(path, dest)
       - name: Commit and push
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add bin/comfyui_rust_filelist*
+          git add bin
           if git diff --cached --quiet; then
             echo "No changes to commit"
             exit 0
