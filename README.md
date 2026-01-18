@@ -24,8 +24,8 @@ maturin develop --release --manifest-path rust/Cargo.toml
 ```
 
 ## Using prebuilt binaries
-Place the built extension file in this folder so Python can import it.
+Place the built extension file in the bin folder so Python can import it.
 The file name should match `comfyui_rust_filelist` with the platform suffix:
-- Windows: `comfyui_rust_filelist.pyd`
-- macOS: `comfyui_rust_filelist.so`
-- Linux: `comfyui_rust_filelist.so`
+- Windows: `bin/comfyui_rust_filelist.pyd`
+- macOS: `bin/comfyui_rust_filelist.so`
+- Linux: `bin/comfyui_rust_filelist.so`

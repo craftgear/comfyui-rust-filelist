@@ -16,8 +16,10 @@ def _load_rust() -> bool:
     if _RUST_MODULE_NAME in sys.modules:
         return True
     module_dir = os.path.dirname(__file__)
-    if module_dir not in sys.path:
-        sys.path.insert(0, module_dir)
+    bin_dir = os.path.join(module_dir, "bin")
+    for path in (bin_dir, module_dir):
+        if path not in sys.path:
+            sys.path.insert(0, path)
     try:
         importlib.import_module(_RUST_MODULE_NAME)
         return True
