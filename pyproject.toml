@@ -1,0 +1,16 @@
+[build-system]
+requires = ["maturin>=1.6,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "comfyui-rust-filelist"
+version = "0.1.0"
+requires-python = ">=3.10"
+description = "Rust powered file list scanner for ComfyUI model folders"
+readme = "README.md"
+license = { text = "MIT" }
+
+[tool.maturin]
+manifest-path = "rust/Cargo.toml"
+module-name = "comfyui_rust_filelist"
+bindings = "pyo3"
