@@ -8,6 +8,7 @@ name = "comfyui_fast_filelist"
 crate-type = ["cdylib"]
 
 [dependencies]
+indicatif = "0.18.3"
 pyo3 = { version = "0.21", features = ["extension-module", "abi3-py310"] }
 rayon = "1.10"
 walkdir = "2.5"

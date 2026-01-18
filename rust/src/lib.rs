@@ -1,9 +1,29 @@
 use pyo3::prelude::*;
 use rayon::prelude::*;
 use std::collections::{HashMap, HashSet};
+use std::io::IsTerminal;
 use std::path::Path;
-use std::time::UNIX_EPOCH;
+use std::time::{Duration, UNIX_EPOCH};
 use walkdir::{DirEntry, WalkDir};
+
+const SPINNER_TICK_MILLIS: u64 = 80;
+const SPINNER_TICK_STRINGS: [&str; 10] = [
+    "⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏",
+];
+
+fn start_spinner(message: &str) -> Option<indicatif::ProgressBar> {
+    if !std::io::stdout().is_terminal() {
+        // ログ汚染を避けるため、TTY のときだけ表示する
+        return None;
+    }
+
+    let spinner = indicatif::ProgressBar::new_spinner();
+    let style = indicatif::ProgressStyle::with_template("{spinner} {msg}").ok()?;
+    spinner.set_style(style.tick_strings(&SPINNER_TICK_STRINGS));
+    spinner.set_message(message.to_string());
+    spinner.enable_steady_tick(Duration::from_millis(SPINNER_TICK_MILLIS));
+    Some(spinner)
+}
 
 fn is_allowed(entry: &DirEntry, excluded: &HashSet<String>) -> bool {
     if !entry.file_type().is_dir() {
@@ -35,6 +55,7 @@ fn scan_model_folders(
     extensions: Vec<String>,
     excluded_dir_names: Vec<String>,
 ) -> PyResult<(Vec<String>, HashMap<String, f64>)> {
+    let spinner = start_spinner("Scanning model folders...");
     let mut files: HashSet<String> = HashSet::new();
     let mut dirs: HashMap<String, f64> = HashMap::new();
 
@@ -109,6 +130,10 @@ fn scan_model_folders(
     let mut files_list: Vec<String> = files.into_iter().collect();
     files_list.sort();
 
+    if let Some(spinner) = spinner {
+        spinner.finish_and_clear();
+    }
+
     Ok((files_list, dirs))
 }
 
@@ -135,6 +160,14 @@ mod tests {
         path.push(format!("comfyui_fast_filelist_test_{}", unique));
         fs::create_dir_all(&path).unwrap();
         path
+    }
+
+    #[test]
+    fn spinner_tick_strings_match_expected() {
+        assert_eq!(
+            super::SPINNER_TICK_STRINGS,
+            ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+        );
     }
 
     #[test]
