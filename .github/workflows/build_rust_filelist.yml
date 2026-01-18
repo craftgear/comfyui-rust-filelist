@@ -5,8 +5,8 @@ on:
     branches:
       - main
     paths:
-      - "custom_nodes/comfyui-rust-filelist/**"
-      - "custom_nodes/comfyui-rust-filelist/.github/workflows/build_rust_filelist.yml"
+      - "rust/**"
+      - ".github/workflows/build_rust_filelist.yml"
 
 permissions:
   contents: write
@@ -37,8 +37,8 @@ jobs:
         run: >
           maturin build
           --release
-          --manifest-path custom_nodes/comfyui-rust-filelist/rust/Cargo.toml
-          --out custom_nodes/comfyui-rust-filelist/dist
+          --manifest-path rust/Cargo.toml
+          --out dist
       - name: Extract extension
         shell: python
         run: |
@@ -47,7 +47,7 @@ jobs:
           import shutil
           import zipfile
 
-          dist_dir = "custom_nodes/comfyui-rust-filelist/dist"
+          dist_dir = "dist"
           wheels = glob.glob(os.path.join(dist_dir, "*.whl"))
           if not wheels:
             raise SystemExit("No wheel files found")
@@ -65,16 +65,16 @@ jobs:
             ]
             if not candidates:
               raise SystemExit("No extension file found in wheel")
-            os.makedirs("custom_nodes/comfyui-rust-filelist", exist_ok=True)
+            os.makedirs(".", exist_ok=True)
             for name in candidates:
-              dest = os.path.join("custom_nodes/comfyui-rust-filelist", os.path.basename(name))
+              dest = os.path.join(".", os.path.basename(name))
               with zf.open(name) as src, open(dest, "wb") as dst:
                 shutil.copyfileobj(src, dst)
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: rust-filelist-${{ matrix.os }}
-          path: custom_nodes/comfyui-rust-filelist/comfyui_rust_filelist*
+          path: comfyui_rust_filelist*
 
   commit:
     if: github.actor != 'github-actions[bot]'
@@ -94,7 +94,7 @@ jobs:
           import os
           import shutil
 
-          target_dir = "custom_nodes/comfyui-rust-filelist"
+          target_dir = "."
           os.makedirs(target_dir, exist_ok=True)
 
           for pattern in (
@@ -112,7 +112,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add custom_nodes/comfyui-rust-filelist/comfyui_rust_filelist*
+          git add comfyui_rust_filelist*
           if git diff --cached --quiet; then
             echo "No changes to commit"
             exit 0
