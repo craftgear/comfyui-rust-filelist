@@ -83,10 +83,14 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+      - name: Sync with origin
+        run: git pull --rebase origin main
       - name: Merge artifacts
         shell: python
         run: |
@@ -118,4 +122,5 @@ jobs:
             exit 0
           fi
           git commit -m "Update rust-filelist binaries"
+          git pull --rebase origin main
           git push
